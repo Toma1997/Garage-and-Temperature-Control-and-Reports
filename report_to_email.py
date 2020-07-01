@@ -60,7 +60,7 @@ def dohvatanjeOstalihPodatakaThingSpeak(slanjeIzvestaja):
 def merenjaOtvaranjaGaraze(imap):
     _, newGarageOpenings = imap.search(None,'SUBJECT "Garage" UNSEEN')
     countNewGarageOpenings = len(newGarageOpenings[0].split())
-    for i in novaOtvaranja[0].split():
+    for i in newGarageOpenings[0].split():
         imap.store(i,'+FLAGS','\\SEEN')
     return countNewGarageOpenings
 
