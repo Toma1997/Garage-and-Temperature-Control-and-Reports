@@ -69,16 +69,13 @@ def kreiranjeIzvestaja(email, password, to, prosecanRadVentilatora, brojPaljenja
     report["Subject"] = "RESPORT RESPONSE"
     report["From"] = email
     report["To"] = to
-    reportTxt = MIMEText("<b>Report at {}</b><br>".format(time.strftime("%d.%m.%Y %H:%M")),'html')
-    report.attach(reportTxt)
-    reportTxt = MIMEText("Average Cooler power since the last report: {0:.2f} %<br>".format(prosecanRadVentilatora), 'html')
-    report.attach(reportTxt)
-    reportTxt = MIMEText("Number of heater activation since the last report: {0:d}<br>".format(brojPaljenjaGrejaca), 'html')
-    report.attach(reportTxt)
-    reportTxt = MIMEText("Number of garage openings since the last report: {0:d}<br>".format(countNewGarageOpenings), 'html')
-    report.attach(reportTxt)
-    reportTxt = MIMEText("<img src='cid:image1'><br>",'html')
-    report.attach(reportTxt)
+    mimeTextsValues = {time.strftime("%d.%m.%Y %H:%M"): "<b>Report at {}</b><br>", 
+                    prosecanRadVentilatora: "Average Cooler power since the last report: {0:.2f} %<br>",
+                    brojPaljenjaGrejaca: "Number of heater activation since the last report: {0:d}<br>",
+                    countNewGarageOpenings: "Number of garage openings since the last report: {0:d}<br>" }
+    for key in mimeTextsValues.keys():
+        report.attach(MIMEText(mimeTextsValues[key].format(key), 'html'))
+    report.attach(MIMEText("<img src='cid:image1'><br>",'html'))
     with open("temperature.png", 'rb') as filePlot:
         imgPlot = MIMEImage(filePlot.read())
         imgPlot.add_header('Content-ID', '<image1>')
