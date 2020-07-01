@@ -16,7 +16,7 @@ def crtanjePodataka(temW2U,tempThingSpeak):
     plt.ylabel("Temperature")
     plt.xlabel("Samples")
     plt.legend()
-    f.savefig("temperature.jpg")
+    f.savefig("temperature.png")
 
 def dohvatanjeTempW2U():
     urlW2U = "https://www.weather2umbrella.com/vremenska-prognoza-beograd-srbija-sr/trenutno"
@@ -48,54 +48,49 @@ def dohvatanjeOstalihPodatakaThingSpeak(slanjeIzvestaja):
     for m in merenja:
         motor.append(int(float(m['field2'])))
         grejac.append(int(m['field3']))
-    print(motor, grejac)
     novoPodaciMotor, novoPodaciGrejac = list(), list()
-    for broj in range(slanjeIzvestaja,len(motor)):
-        novoPodaciMotor.append(motor[broj])
+    for broj in range(slanjeIzvestaja, len(motor)):
+        novoPodaciMotor.append(round(motor[broj] / 255, 1) * 100) # Scale to percentage.
         novoPodaciGrejac.append(grejac[broj])
-    print(novoPodaciMotor, novoPodaciGrejac)
     slanjeIzvestaja = len(grejac)
-    brojPaljenjaGrejaca = sum([1 for stanje in novoPodaciGrejac if stanje == 1])
-    if len(novoPodaciMotor)>0:
-        prosecanRadVentilatora = round(sum(novoPodaciMotor)/len(novoPodaciMotor),2)
-    else:
-        prosecanRadVentilatora = 0
+    brojPaljenjaGrejaca = sum(novoPodaciGrejac)
+    prosecanRadVentilatora = round(sum(novoPodaciMotor)/len(novoPodaciMotor), 2) if len(novoPodaciMotor) > 0 else 0
     return prosecanRadVentilatora, brojPaljenjaGrejaca, slanjeIzvestaja
 
 def merenjaOtvaranjaGaraze(imap):
-    _, novaOtvaranja = imap.search(None,'SUBJECT "Garage" UNSEEN')
-    otvaranjeGaraze = len(novaOtvaranja[0].split())
+    _, newGarageOpenings = imap.search(None,'SUBJECT "Garage" UNSEEN')
+    countNewGarageOpenings = len(newGarageOpenings[0].split())
     for i in novaOtvaranja[0].split():
         imap.store(i,'+FLAGS','\\SEEN')
-    return otvaranjeGaraze
+    return countNewGarageOpenings
 
-def kreiranjeIzvestaja(email, password, kome, prosecanRadVentilatora, brojPaljenjaGrejaca, otvaranjeGaraze):
-    poruka = MIMEMultipart()
-    poruka["Subject"] = "REZULTAT"
-    poruka["From"] = email
-    poruka["To"] = kome
-    porukaTxt = MIMEText("<b>Izvestaj za {}</b><br>".format(time.strftime("%d.%m.%Y %H:%M")),'html')
-    poruka.attach(porukaTxt)
-    porukaTxt = MIMEText("Average Cooler power since the last report: {0:.2f} %<br>".format(prosecanRadVentilatora), 'html')
-    poruka.attach(porukaTxt)
-    porukaTxt = MIMEText("Number of heater activation since the last report: {0:d}<br>".format(brojPaljenjaGrejaca), 'html')
-    poruka.attach(porukaTxt)
-    porukaTxt = MIMEText("Number of garage openings since the last report: {0:d}<br>".format(otvaranjeGaraze), 'html')
-    poruka.attach(porukaTxt)
-    porukaTxt = MIMEText("<img src='cid:image1'><br>",'html')
-    poruka.attach(porukaTxt)
-    with open("temperature.jpg", 'rb') as filePlot:
+def kreiranjeIzvestaja(email, password, to, prosecanRadVentilatora, brojPaljenjaGrejaca, countNewGarageOpenings):
+    report = MIMEMultipart()
+    report["Subject"] = "RESPORT RESPONSE"
+    report["From"] = email
+    report["To"] = to
+    reportTxt = MIMEText("<b>Report at {}</b><br>".format(time.strftime("%d.%m.%Y %H:%M")),'html')
+    report.attach(reportTxt)
+    reportTxt = MIMEText("Average Cooler power since the last report: {0:.2f} %<br>".format(prosecanRadVentilatora), 'html')
+    report.attach(reportTxt)
+    reportTxt = MIMEText("Number of heater activation since the last report: {0:d}<br>".format(brojPaljenjaGrejaca), 'html')
+    report.attach(reportTxt)
+    reportTxt = MIMEText("Number of garage openings since the last report: {0:d}<br>".format(countNewGarageOpenings), 'html')
+    report.attach(reportTxt)
+    reportTxt = MIMEText("<img src='cid:image1'><br>",'html')
+    report.attach(reportTxt)
+    with open("temperature.png", 'rb') as filePlot:
         imgPlot = MIMEImage(filePlot.read())
         imgPlot.add_header('Content-ID', '<image1>')
-    poruka.attach(imgPlot)
+    report.attach(imgPlot)
     server = smtplib.SMTP('smtp.gmail.com', 587)
     server.starttls()
     server.login(email, password)
-    server.sendmail(email, kome, poruka.as_string())
+    server.sendmail(email, to, report.as_string())
     server.quit()
 
 def odKogaJeMejl(brojMejla):
-    res, msg = imap.fetch(str(int(brojMejla)), "(RFC822)")
+    _, msg = imap.fetch(str(int(brojMejla)), "(RFC822)")
     for response in msg:
         if isinstance(response, tuple):
             msg = emailDecoder.message_from_bytes(response[1])
@@ -105,17 +100,19 @@ def odKogaJeMejl(brojMejla):
 if __name__ == "__main__":
     sendReport = 0
     while True:
-        email = "toma.demo@gmail.com"
+        email = "toma.demo97@gmail.com"
         password = "Tomademo97+"
         imap = imaplib.IMAP4_SSL('imap.gmail.com')
-        imap.login(email,password)
+        imap.login(email, password)
+        print("Logged in!")
         imap.select("INBOX")
-        _, izvestaj = imap.search(None,'SUBJECT "IZVESTAJ" UNSEEN')
+        _, izvestaj = imap.search(None, 'SUBJECT "IZVESTAJ" UNSEEN')
         for i in izvestaj[0].split():
-            kome = odKogaJeMejl(i)
+            to = odKogaJeMejl(i)
             tempW2U = dohvatanjeTempW2U()
             tempThingSpeak = dohvatanjeTempThingSpeak()
             crtanjePodataka(tempW2U, tempThingSpeak)
             prosecanRadVentilatora, brojPaljenjaGrejaca, sendReport = dohvatanjeOstalihPodatakaThingSpeak(sendReport)
-            otvaranjeGaraze = merenjaOtvaranjaGaraze(imap)
-            kreiranjeIzvestaja(email, password, kome,prosecanRadVentilatora, brojPaljenjaGrejaca,otvaranjeGaraze)
+            countNewGarageOpenings = merenjaOtvaranjaGaraze(imap)
+            print("Report is creating...")
+            kreiranjeIzvestaja(email, password, to, prosecanRadVentilatora, brojPaljenjaGrejaca, countNewGarageOpenings)
