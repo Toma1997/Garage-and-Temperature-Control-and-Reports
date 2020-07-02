@@ -4,7 +4,7 @@
 #define ECHO 3
 long duration; // Variable for the duration of sound wave travel.
 float distance;
-int flag = 0; // Variable to send IFTTT request only once
+bool garageOpened = false; // Variable to send IFTTT request only once
 String ssid = "Simulator Wifi";
 String password = "";
 String link  = "https://maker.ifttt.com";
@@ -29,7 +29,6 @@ void setup(){
   pinMode(TRIGGER, OUTPUT);
   pinMode(ECHO, INPUT);
   servo.attach(SERVO);
-
 }
 void loop(){
 	digitalWrite(TRIGGER, LOW);
@@ -44,8 +43,9 @@ void loop(){
     distance = duration * 0.034 / 2;
     if(distance >= 5.0 && distance <= 15.0){
 		servo.write(90);
-      	if(flag == 0){
-          
+      	if(!garageOpened){
+          	garageOpened = true;
+			
         	// Create HTTP request message.
             String httpRequest = "GET " + uri +
               " HTTP/1.1\r\nHost: " + link + "\r\n\r\n";
@@ -60,9 +60,8 @@ void loop(){
             if (!Serial.find("SEND OK\r\n")){
             }
         }
-      	flag++;
     } else {
-      	flag = 0;
+      	garageOpened = false;
       	servo.write(0);
     }
 }

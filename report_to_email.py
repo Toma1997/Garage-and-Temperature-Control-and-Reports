@@ -22,7 +22,6 @@ def fetchtempWeather2Umbrella():
     weather_per_hours = BeautifulSoup(respWeather2Umbrella.text, "html.parser").find('div', attrs={'class':'weather_per_hours'})
     hourly_temp = weather_per_hours.find_all('div', attrs={'class':'col-xs-2 col-sm-1 hourly_temp'})
     tempList = []
-    print(hourly_temp)
     for temp in hourly_temp:
         tempList.append(int(temp.p.text.replace("°","")))
     hours = int(time.strftime("%H"))
@@ -37,7 +36,7 @@ def fetchtempWeather2Umbrella():
     return tempWeather2Umbrella 
 
 def fetchTempThingSpeak():
-    respThingSpeak= requests.get("https://api.thingspeak.com/channels/1091866/feeds.json?api_key=547RK4B5HP5VKXHV&results=7")
+    respThingSpeak= requests.get("https://api.thingspeak.com/channels/1092688/feeds.json?api_key=ZR7N919RTEZO6MT7&results=7")
     values = respThingSpeak.json()['feeds']
     tempThingSpeak = []
     for val in values:
@@ -54,7 +53,7 @@ def plotTemperatures(tempWeather2Umbrella, tempThingSpeak):
     f.savefig("temperature.png")
 
 def getCoolerHeaterAvg(lastReportNum):
-    respThingSpeak= requests.get("https://api.thingspeak.com/channels/1091866/feeds.json?api_key=547RK4B5HP5VKXHV")
+    respThingSpeak= requests.get("https://api.thingspeak.com/channels/1092688/feeds.json?api_key=ZR7N919RTEZO6MT7")
     values = respThingSpeak.json()['feeds']
     coolerAllValues = []
     heaterAllValues = []
@@ -64,10 +63,13 @@ def getCoolerHeaterAvg(lastReportNum):
     afterLastReportCoolerValues = []
     afterLastReportHeaterValues = []
     for indx in range(lastReportNum, len(coolerAllValues)):
-        afterLastReportCoolerValues.append(round(coolerAllValues[indx] / 255, 1) * 100) # Scale to percentage.
+        afterLastReportCoolerValues.append(coolerAllValues[indx])
         afterLastReportHeaterValues.append(heaterAllValues[indx])
     lastReportNum = len(heaterAllValues)
-    countHeatOn = sum(afterLastReportHeaterValues)
+    countHeatOn = 0
+    for i in range(0, len(afterLastReportHeaterValues)):
+        if afterLastReportHeaterValues[i] == 1 and (i == 0 or afterLastReportHeaterValues[i-1] == 0):
+            countHeatOn += 1
     avgCoolerPower = round(sum(afterLastReportCoolerValues)/len(afterLastReportCoolerValues), 2) if len(afterLastReportCoolerValues) > 0 else 0
     return avgCoolerPower, countHeatOn, lastReportNum
 
